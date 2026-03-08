@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOVA X1 — Sound Beyond Limits</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Chakra+Petch:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --c1: #00e5ff;
+  --c2: #7c3aed;
+  --c3: #ff6b35;
+  --bg: #03050f;
+  --surface: rgba(255,255,255,0.035);
+  --border: rgba(0,229,255,0.12);
+  --text: #dde8f5;
+  --muted: rgba(221,232,245,0.42);
+  --font-d: 'Bebas Neue', sans-serif;
+  --font-b: 'Chakra Petch', sans-serif;
+  --font-m: 'Share Tech Mono', monospace;
+}
+
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  overflow-x: hidden;
+  cursor: none;
+  user-select: none;
+}
+
+/* ═══ CURSOR ═══ */
+#CUR { position:fixed; top:0; left:0; z-index:10000; pointer-events:none; }
+#CD { width:6px; height:6px; background:var(--c1); border-radius:50%; position:absolute; transform:translate(-50%,-50%); box-shadow:0 0 10px var(--c1); }
+#CR { width:36px; height:36px; border:1.5px solid rgba(0,229,255,0.5); border-radius:50%; position:absolute; transform:translate(-50%,-50%); transition:width .15s,height .15s,border-color .2s; }
+#CR.big { width:52px; height:52px; border-color:var(--c1); }
+
+/* ═══ CANVAS ═══ */
+#CVS { position:fixed; inset:0; z-index:1; pointer-events:none; }
+
+/* ═══ OVERLAY ═══ */
+#OVL {
+  position:fixed; inset:0; z-index:5; pointer-events:none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0,229,255,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 100%, rgba(124,58,237,0.04) 0%, transparent 50%);
+}
+/* Scanlines */
+#OVL::after {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px);
+}
+/* Vignette */
+#OVL::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
+}
+
+/* ═══ NAV ═══ */
+#NAV {
+  position:fixed; top:0; left:0; right:0; z-index:500;
+  padding:22px 60px; display:flex; align-items:center; justify-content:space-between;
+  transition:background .4s;
+}
+#NAV.solid { background:rgba(3,5,15,0.96); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); }
+.nav-logo { font-family:var(--font-d); font-size:2rem; letter-spacing:.2em; color:#fff; display:flex; align-items:center; gap:4px; }
+.nav-logo .dot { width:8px; height:8px; background:var(--c1); border-radius:50%; box-shadow:0 0 12px var(--c1); display:inline-block; margin-left:2px; animation:dotpulse 2s ease-in-out infinite; }
+@keyframes dotpulse { 0%,100%{opacity:1;box-shadow:0 0 8px var(--c1)} 50%{opacity:.4;box-shadow:0 0 20px var(--c1)} }
+.nav-links { display:flex; gap:36px; list-style:none; }
+.nav-links a { color:var(--muted); text-decoration:none; font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; transition:color .2s; font-weight:500; }
+.nav-links a:hover { color:var(--c1); }
+.nav-order {
+  background:linear-gradient(135deg,var(--c1),var(--c2)); border:none; color:#fff;
+  padding:11px 28px; border-radius:3px; font-family:var(--font-b); font-size:.78rem;
+  font-weight:700; letter-spacing:.1em; text-transform:uppercase; cursor:none;
+  transition:all .3s; position:relative; overflow:hidden;
+}
+.nav-order::before { content:''; position:absolute; inset:0; background:rgba(255,255,255,.15); opacity:0; transition:.2s; }
+.nav-order:hover::before { opacity:1; }
+.nav-order:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(0,229,255,.3); }
+
+/* ═══ PROGRESS BAR ═══ */
+#PROG { position:fixed; top:0; left:0; height:2px; z-index:600; background:linear-gradient(90deg,var(--c1),var(--c2),var(--c3)); width:0; transition:width .08s linear; }
+
+/* ═══ SECTION DOTS ═══ */
+#DOTS { position:fixed; right:32px; top:50%; transform:translateY(-50%); z-index:200; display:flex; flex-direction:column; gap:12px; }
+.dot-ind { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.2); cursor:none; transition:all .35s; }
+.dot-ind.on { background:var(--c1); box-shadow:0 0 10px var(--c1); height:22px; border-radius:3px; }
+
+/* ═══ SCROLL CONTAINER ═══ */
+#SC { position:relative; z-index:10; }
+
+/* ═══ SECTIONS ═══ */
+.sec { min-height:100vh; display:flex; align-items:center; justify-content:center; position:relative; padding:80px 60px; }
+
+/* ═══ HERO ═══ */
+#s0 {
+  flex-direction:column; text-align:center; justify-content:center; align-items:center;
+  min-height:100vh;
+}
+.hero-pre { font-family:var(--font-m); font-size:.7rem; letter-spacing:.3em; color:var(--c1); text-transform:uppercase; margin-bottom:28px; opacity:0; transform:translateY(16px); }
+.hero-h { font-family:var(--font-d); font-size:clamp(4.5rem,11vw,10rem); line-height:.9; letter-spacing:.05em; color:#fff; margin-bottom:20px; }
+.hero-h .line { display:block; overflow:hidden; }
+.hero-h .line span { display:block; transform:translateY(110%); opacity:0; }
+.hero-h .accent { color:var(--c1); text-shadow:0 0 80px rgba(0,229,255,.5),0 0 160px rgba(0,229,255,.2); }
+.hero-sub { font-size:clamp(.9rem,1.8vw,1.15rem); color:var(--muted); letter-spacing:.08em; line-height:1.7; max-width:500px; opacity:0; }
+.hero-cta-row { display:flex; gap:16px; margin-top:44px; justify-content:center; opacity:0; }
+.btn-prim {
+  background:linear-gradient(135deg,var(--c1),var(--c2)); color:#fff; border:none;
+  padding:16px 44px; border-radius:3px; font-family:var(--font-b); font-weight:700;
+  font-size:.88rem; letter-spacing:.1em; text-transform:uppercase; cursor:none; transition:all .3s;
+}
+.btn-prim:hover { transform:translateY(-3px); box-shadow:0 12px 40px rgba(0,229,255,.4); }
+.btn-sec {
+  background:transparent; border:1px solid rgba(0,229,255,.35); color:var(--c1);
+  padding:16px 44px; border-radius:3px; font-family:var(--font-b); font-weight:600;
+  font-size:.88rem; letter-spacing:.1em; text-transform:uppercase; cursor:none; transition:all .3s;
+}
+.btn-sec:hover { background:rgba(0,229,255,.08); border-color:var(--c1); }
+.scroll-hint { position:absolute; bottom:40px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:10px; }
+.sh-line { width:1px; height:64px; background:linear-gradient(var(--c1),transparent); animation:shrink 2s ease-in-out infinite; transform-origin:top; }
+@keyframes shrink { 0%{opacity:0;transform:scaleY(0)} 40%{opacity:1;transform:scaleY(1)} 100%{opacity:0;transform:scaleY(1)translateY(10px)} }
+.sh-txt { font-family:var(--font-m); font-size:.58rem; letter-spacing:.2em; color:var(--muted); }
+
+/* ═══ SHARED LABELS ═══ */
+.sec-badge { font-family:var(--font-m); font-size:.65rem; letter-spacing:.22em; color:var(--c1); text-transform:uppercase; display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.sec-badge i { width:28px; height:1px; background:var(--c1); display:block; }
+.sec-h { font-family:var(--font-d); font-size:clamp(2.8rem,5.5vw,5.5rem); line-height:.95; letter-spacing:.04em; color:#fff; margin-bottom:18px; }
+.sec-p { font-size:.92rem; color:var(--muted); line-height:1.9; font-weight:300; max-width:420px; }
+
+/* ═══ DESIGN SECTION ═══ */
+#s1 { justify-content:flex-start; padding-left:max(60px,8vw); }
+.s1-content { max-width:480px; }
+.specs-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:32px; }
+.spec-box { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:18px; position:relative; overflow:hidden; transition:all .3s; }
+.spec-box:hover { border-color:rgba(0,229,255,.4); transform:translateY(-3px); }
+.spec-box::after { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--c1),transparent); opacity:0; transition:.3s; }
+.spec-box:hover::after { opacity:1; }
+.spec-v { font-family:var(--font-d); font-size:2.4rem; color:var(--c1); line-height:1; }
+.spec-v sub { font-size:1rem; color:rgba(0,229,255,.5); }
+.spec-l { font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-top:5px; }
+
+/* ═══ EXPLODE SECTION ═══ */
+#s2 { flex-direction:column; text-align:center; padding:80px 60px; }
+.s2-top { max-width:680px; margin-bottom:48px; }
+.parts-ring { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; max-width:800px; width:100%; }
+.part-card {
+  background:rgba(0,229,255,.03); border:1px solid rgba(0,229,255,.1);
+  border-radius:8px; padding:22px 18px; text-align:left; cursor:none; transition:all .4s;
+  position:relative; overflow:hidden;
+}
+.part-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:linear-gradient(180deg,transparent,var(--c1),transparent); transform:scaleY(0); transition:transform .4s; }
+.part-card:hover { border-color:rgba(0,229,255,.4); background:rgba(0,229,255,.07); transform:translateY(-5px); box-shadow:0 20px 40px rgba(0,0,0,.4); }
+.part-card:hover::before { transform:scaleY(1); }
+.part-num { font-family:var(--font-m); font-size:.62rem; color:rgba(0,229,255,.4); margin-bottom:8px; }
+.part-icon { font-size:1.6rem; margin-bottom:10px; }
+.part-name { font-family:var(--font-d); font-size:1.1rem; letter-spacing:.06em; color:#fff; margin-bottom:6px; }
+.part-desc { font-size:.78rem; color:var(--muted); line-height:1.6; }
+.part-stat { font-family:var(--font-m); font-size:.62rem; color:var(--c1); margin-top:8px; }
+
+/* ═══ FEATURES ═══ */
+#s3 { justify-content:flex-end; padding-right:max(60px,8vw); }
+.feats { max-width:500px; }
+.feat-row { display:flex; gap:22px; padding:26px 0; border-bottom:1px solid rgba(255,255,255,.06); cursor:none; transition:all .3s; }
+.feat-row:first-child { border-top:1px solid rgba(255,255,255,.06); }
+.feat-row:hover { padding-left:12px; }
+.feat-icon-box { width:54px; height:54px; border:1px solid var(--border); border-radius:10px; display:grid; place-items:center; font-size:1.4rem; flex-shrink:0; transition:all .3s; }
+.feat-row:hover .feat-icon-box { border-color:var(--c1); box-shadow:0 0 20px rgba(0,229,255,.15); }
+.feat-t { font-family:var(--font-d); font-size:1.5rem; letter-spacing:.05em; color:#fff; margin-bottom:5px; }
+.feat-d { font-size:.82rem; color:var(--muted); line-height:1.7; }
+.feat-chip { font-family:var(--font-m); font-size:.6rem; color:var(--c1); border:1px solid rgba(0,229,255,.25); border-radius:20px; padding:3px 10px; display:inline-block; margin-top:8px; }
+
+/* ═══ ANC VISUALIZER ═══ */
+#s4 { flex-direction:column; text-align:center; }
+.anc-vis { position:relative; width:320px; height:320px; margin:48px auto 0; }
+.anc-ring { position:absolute; inset:0; border-radius:50%; border:1px solid; animation:aring 3s ease-in-out infinite; }
+.anc-ring:nth-child(1){border-color:rgba(0,229,255,.5);animation-delay:0s}
+.anc-ring:nth-child(2){inset:20px;border-color:rgba(0,229,255,.35);animation-delay:.4s}
+.anc-ring:nth-child(3){inset:40px;border-color:rgba(0,229,255,.2);animation-delay:.8s}
+.anc-ring:nth-child(4){inset:60px;border-color:rgba(0,229,255,.12);animation-delay:1.2s}
+@keyframes aring { 0%,100%{transform:scale(1);opacity:.6} 50%{transform:scale(1.04);opacity:1} }
+.anc-center { position:absolute; inset:80px; border-radius:50%; background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.3); display:grid; place-items:center; }
+.anc-db { font-family:var(--font-d); font-size:2.8rem; color:var(--c1); text-shadow:0 0 30px var(--c1); }
+.anc-label { font-family:var(--font-m); font-size:.6rem; color:var(--muted); margin-top:2px; }
+.anc-waves { position:absolute; inset:-30px; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.wave-bar { width:3px; border-radius:3px; margin:0 2px; background:linear-gradient(180deg,var(--c1),var(--c2)); animation:waveb var(--d,1s) ease-in-out infinite alternate; }
+@keyframes waveb { from{height:4px;opacity:.3} to{height:var(--h,30px);opacity:.8} }
+.anc-stats { display:flex; gap:48px; margin-top:40px; }
+.as-item { text-align:center; }
+.as-val { font-family:var(--font-d); font-size:3rem; color:#fff; line-height:1; }
+.as-val span { color:var(--c1); font-size:1.4rem; }
+.as-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+
+/* ═══ COLOR PICKER ═══ */
+#s5 { flex-direction:column; text-align:center; }
+.color-stage { position:relative; margin:40px auto 0; width:min(600px,90vw); }
+.color-swatches { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:40px; }
+.csw {
+  width:52px; height:52px; border-radius:50%; cursor:none; transition:all .3s;
+  border:2px solid transparent; position:relative;
+}
+.csw::after { content:attr(data-n); position:absolute; bottom:-26px; left:50%; transform:translateX(-50%); white-space:nowrap; font-family:var(--font-m); font-size:.58rem; color:var(--muted); opacity:0; transition:.2s; }
+.csw.sel,.csw:hover { transform:scale(1.2); }
+.csw.sel { border-color:#fff; box-shadow:0 0 0 4px rgba(255,255,255,.1); }
+.csw:hover::after,.csw.sel::after { opacity:1; }
+.color-name-big { font-family:var(--font-d); font-size:clamp(2rem,5vw,4rem); letter-spacing:.1em; transition:all .4s; }
+.color-detail { font-family:var(--font-m); font-size:.72rem; color:var(--muted); margin-top:8px; }
+
+/* ═══ CHARGING CASE ═══ */
+#s6 { justify-content:flex-start; padding-left:max(60px,8vw); }
+.case-right { max-width:460px; }
+.bat-row { display:flex; gap:32px; margin-top:36px; }
+.bat-unit { }
+.bat-v { font-family:var(--font-d); font-size:3.5rem; color:#fff; line-height:1; }
+.bat-v span { color:var(--c1); font-size:1.6rem; }
+.bat-l { font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-top:4px; }
+.charge-bar-wrap { margin-top:32px; }
+.charge-label { font-family:var(--font-m); font-size:.65rem; color:var(--muted); letter-spacing:.1em; margin-bottom:8px; display:flex; justify-content:space-between; }
+.charge-bar { height:3px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; margin-bottom:14px; }
+.charge-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--c1),var(--c2)); transition:width 1.5s ease; width:0; }
+.charge-fill.go { width:var(--w,80%); }
+
+/* ═══ BUY ═══ */
+#s7 { flex-direction:column; text-align:center; }
+.price-display { font-family:var(--font-d); font-size:clamp(4rem,10vw,9rem); color:#fff; line-height:1; margin:20px 0; }
+.price-display .sym { font-size:.4em; color:var(--c1); vertical-align:top; margin-top:.25em; }
+.price-perks { display:flex; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; margin:32px auto; max-width:600px; }
+.perk { flex:1; padding:20px; border-right:1px solid var(--border); text-align:center; }
+.perk:last-child { border-right:none; }
+.perk-icon { font-size:1.4rem; margin-bottom:8px; }
+.perk-t { font-family:var(--font-d); font-size:1rem; letter-spacing:.06em; color:#fff; }
+.perk-d { font-size:.72rem; color:var(--muted); margin-top:3px; }
+.buy-actions { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:8px; }
+.wishlist-btn {
+  background:transparent; border:1px solid rgba(255,255,255,.15); color:var(--muted);
+  padding:16px 44px; border-radius:3px; font-family:var(--font-b); font-size:.88rem;
+  font-weight:600; letter-spacing:.08em; text-transform:uppercase; cursor:none; transition:all .3s;
+}
+.wishlist-btn:hover { border-color:var(--c1); color:var(--c1); }
+
+/* ═══ FLOATING LABELS ═══ */
+#LBLS { position:fixed; inset:0; z-index:20; pointer-events:none; }
+.fl {
+  position:absolute; display:flex; align-items:center; gap:0; opacity:0;
+  transition:opacity .5s; transform:translateY(-50%);
+}
+.fl.left { flex-direction:row; }
+.fl.right { flex-direction:row-reverse; }
+.fl-line { height:1px; width:0; transition:width .6s var(--delay,.1s) ease; }
+.fl.left .fl-line { background:linear-gradient(90deg,transparent,var(--c1)); }
+.fl.right .fl-line { background:linear-gradient(90deg,var(--c1),transparent); }
+.fl.show .fl-line { width:65px; }
+.fl-box {
+  background:rgba(0,5,18,.9); border:1px solid rgba(0,229,255,.3); border-radius:5px;
+  padding:10px 16px; backdrop-filter:blur(16px);
+  opacity:0; transform:translateX(var(--tx,-10px)); transition:all .4s var(--delay,.2s);
+}
+.fl.show .fl-box { opacity:1; transform:translateX(0); }
+.fl-name { font-family:var(--font-m); font-size:.62rem; letter-spacing:.14em; color:var(--c1); text-transform:uppercase; }
+.fl-desc { font-size:.72rem; color:var(--muted); margin-top:3px; }
+
+/* ═══ NOTIFICATIONS ═══ */
+#NOTIFS { position:fixed; bottom:28px; right:28px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+.notif { background:rgba(5,8,20,.96); border:1px solid var(--border); border-radius:10px; padding:14px 20px; font-size:.82rem; max-width:280px; transform:translateX(120%); opacity:0; transition:all .45s cubic-bezier(.22,1,.36,1); pointer-events:all; }
+.notif.in { transform:translateX(0); opacity:1; }
+
+/* ═══ WAVEFORM VISUAL ═══ */
+#wvf { display:flex; align-items:center; gap:3px; height:48px; justify-content:center; margin:24px 0; }
+.wvb { width:3px; border-radius:2px; background:linear-gradient(var(--c1),var(--c2)); animation:wvba var(--d,.5s) ease-in-out infinite alternate; }
+@keyframes wvba { from{height:4px;opacity:.3} to{height:var(--h,24px);opacity:1} }
+
+/* ═══ FOOTER ═══ */
+footer { background:rgba(0,0,0,.6); border-top:1px solid var(--border); padding:48px 60px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:24px; position:relative; z-index:10; }
+.fl-logo { font-family:var(--font-d); font-size:1.8rem; letter-spacing:.15em; }
+.fl-logo em { color:var(--c1); font-style:normal; }
+.fl-links { display:flex; gap:28px; list-style:none; }
+.fl-links a { color:var(--muted); text-decoration:none; font-size:.78rem; letter-spacing:.08em; transition:color .2s; }
+.fl-links a:hover { color:var(--c1); }
+.fl-copy { font-family:var(--font-m); font-size:.6rem; color:rgba(255,255,255,.18); }
+
+/* ═══ WISHLIST MODAL ═══ */
+#WM { position:fixed; inset:0; z-index:8000; background:rgba(0,0,0,.8); backdrop-filter:blur(12px); display:grid; place-items:center; opacity:0; pointer-events:none; transition:opacity .3s; }
+#WM.show { opacity:1; pointer-events:all; }
+.wm-box { background:rgba(5,10,24,.98); border:1px solid var(--border); border-radius:16px; padding:40px; width:min(460px,92vw); position:relative; }
+.wm-t { font-family:var(--font-d); font-size:2rem; letter-spacing:.08em; color:#fff; margin-bottom:6px; }
+.wm-s { font-size:.84rem; color:var(--muted); margin-bottom:28px; }
+.wm-close { position:absolute; top:16px; right:16px; width:32px; height:32px; border:1px solid var(--border); border-radius:50%; background:transparent; color:var(--muted); cursor:none; display:grid; place-items:center; font-size:.9rem; transition:.2s; }
+.wm-close:hover { color:#fff; border-color:rgba(255,255,255,.3); }
+.wm-field { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.wm-label { font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); }
+.wm-input { background:rgba(255,255,255,.05); border:1.5px solid var(--border); border-radius:8px; padding:12px 16px; color:var(--text); font-family:var(--font-b); font-size:.88rem; outline:none; transition:.2s; }
+.wm-input:focus { border-color:rgba(0,229,255,.5); }
+.wm-input::placeholder { color:rgba(255,255,255,.2); }
+.wm-submit { width:100%; padding:14px; background:linear-gradient(135deg,var(--c1),var(--c2)); border:none; border-radius:8px; color:#fff; font-family:var(--font-b); font-weight:700; font-size:.9rem; letter-spacing:.08em; text-transform:uppercase; cursor:none; margin-top:8px; transition:all .3s; }
+.wm-submit:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgba(0,229,255,.3); }
+
+/* ═══ GRAIN ═══ */
+body::before { content:''; position:fixed; inset:0; z-index:6; pointer-events:none; opacity:.022; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:180px; }
+
+/* CIN FRAME LINES */
+.cfl { position:fixed; pointer-events:none; z-index:4; }
+.cfl-t { top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(0,229,255,.07) 40%,rgba(0,229,255,.07) 60%,transparent); }
+.cfl-b { bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(0,229,255,.07) 40%,rgba(0,229,255,.07) 60%,transparent); }
+.cfl-l { top:0; bottom:0; left:0; width:1px; background:linear-gradient(180deg,transparent,rgba(0,229,255,.05) 40%,rgba(0,229,255,.05) 60%,transparent); }
+.cfl-r { top:0; bottom:0; right:0; width:1px; background:linear-gradient(180deg,transparent,rgba(0,229,255,.05) 40%,rgba(0,229,255,.05) 60%,transparent); }
+
+@media (max-width:768px) {
+  #NAV { padding:16px 24px; }
+  .nav-links { display:none; }
+  .sec { padding:80px 24px; }
+  #s1,#s3,#s6 { padding-left:24px; padding-right:24px; }
+  .parts-ring { grid-template-columns:1fr 1fr; }
+  .hero-h { font-size:clamp(3.5rem,14vw,6rem); }
+  .anc-stats { gap:24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="CUR"><div id="CD"></div><div id="CR"></div></div>
+
+<!-- OVERLAY -->
+<div id="OVL"></div>
+
+<!-- GRAIN + FRAME LINES -->
+<div class="cfl cfl-t"></div><div class="cfl cfl-b"></div>
+<div class="cfl cfl-l"></div><div class="cfl cfl-r"></div>
+
+<!-- PROGRESS -->
+<div id="PROG"></div>
+
+<!-- NAV -->
+<nav id="NAV">
+  <div class="nav-logo">NOVA<div class="dot"></div></div>
+  <ul class="nav-links">
+    <li><a href="#s0">Home</a></li>
+    <li><a href="#s2">Technology</a></li>
+    <li><a href="#s3">Features</a></li>
+    <li><a href="#s5">Colors</a></li>
+    <li><a href="#s7">Buy</a></li>
+  </ul>
+  <button class="nav-order" onclick="document.getElementById('WM').classList.add('show')">Order Now</button>
+</nav>
+
+<!-- SECTION DOTS -->
+<div id="DOTS">
+  <div class="dot-ind on"></div>
+  <div class="dot-ind"></div>
+  <div class="dot-ind"></div>
+  <div class="dot-ind"></div>
+  <div class="dot-ind"></div>
+  <div class="dot-ind"></div>
+  <div class="dot-ind"></div>
+  <div class="dot-ind"></div>
+</div>
+
+<!-- THREE.JS CANVAS -->
+<canvas id="CVS"></canvas>
+
+<!-- FLOATING COMPONENT LABELS -->
+<div id="LBLS">
+  <div class="fl left" id="fl0" style="left:12%;top:17%;--delay:.05s;--tx:-12px"><div class="fl-line"></div><div class="fl-box"><div class="fl-name">Acoustic Grille</div><div class="fl-desc">Titanium mesh · 0.3mm perforations</div></div></div>
+  <div class="fl left" id="fl1" style="left:10%;top:29%;--delay:.12s;--tx:-12px"><div class="fl-line"></div><div class="fl-box"><div class="fl-name">Metal Casing (Front)</div><div class="fl-desc">CNC aerospace aluminium</div></div></div>
+  <div class="fl left" id="fl2" style="left:8%;top:42%;--delay:.19s;--tx:-12px"><div class="fl-line"></div><div class="fl-box"><div class="fl-name">Speaker Driver</div><div class="fl-desc">Custom 11mm graphene composite</div></div></div>
+  <div class="fl left" id="fl3" style="left:10%;top:55%;--delay:.26s;--tx:-12px"><div class="fl-line"></div><div class="fl-box"><div class="fl-name">Main PCB</div><div class="fl-desc">Qualcomm QCC5181 · aptX Lossless</div></div></div>
+  <div class="fl left" id="fl4" style="left:12%;top:68%;--delay:.33s;--tx:-12px"><div class="fl-line"></div><div class="fl-box"><div class="fl-name">Battery</div><div class="fl-desc">105mAh LiPo · Quick Charge</div></div></div>
+  <div class="fl left" id="fl5" style="left:14%;top:80%;--delay:.4s;--tx:-12px"><div class="fl-line"></div><div class="fl-box"><div class="fl-name">Silicone Ear Tip</div><div class="fl-desc">Medical-grade memory foam hybrid</div></div></div>
+  <div class="fl right" id="fl6" style="right:8%;top:42%"><div class="fl-line" style="background:linear-gradient(90deg,var(--c1),transparent)"></div><div class="fl-box"><div class="fl-name">Assembled Reference (R)</div><div class="fl-desc">Right earbud · 4.2g total weight</div></div></div>
+</div>
+
+<!-- WISHLIST MODAL -->
+<div id="WM">
+  <div class="wm-box">
+    <button class="wm-close" onclick="document.getElementById('WM').classList.remove('show')">✕</button>
+    <div class="wm-t">Join Waitlist</div>
+    <div class="wm-s">Be first to experience NOVA X1. Limited launch units.</div>
+    <div class="wm-field"><div class="wm-label">Full Name</div><input class="wm-input" placeholder="Your name" id="wl-name"></div>
+    <div class="wm-field"><div class="wm-label">Email Address</div><input class="wm-input" type="email" placeholder="your@email.com" id="wl-email"></div>
+    <div class="wm-field"><div class="wm-label">Preferred Color</div>
+      <select class="wm-input" id="wl-color" style="cursor:none">
+        <option>Midnight Black</option><option>Arctic Silver</option>
+        <option>Ocean Blue</option><option>Sunset Orange</option><option>Pearl White</option>
+      </select>
+    </div>
+    <button class="wm-submit" onclick="submitWishlist()">Reserve My Unit →</button>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="NOTIFS"></div>
+
+<!-- ════════ SCROLL CONTAINER ════════ -->
+<div id="SC">
+
+<!-- HERO -->
+<section class="sec" id="s0">
+  <div>
+    <div class="hero-pre" id="hp">NOVA X1 WIRELESS · THIRD GENERATION</div>
+    <h1 class="hero-h">
+      <span class="line"><span id="h1a">SOUND</span></span>
+      <span class="line"><span id="h1b" class="accent">BEYOND</span></span>
+      <span class="line"><span id="h1c">LIMITS.</span></span>
+    </h1>
+    <p class="hero-sub" id="hsub">11mm Graphene Driver. Hybrid ANC. 32 Hours of Pure Audio Freedom.</p>
+    <div class="hero-cta-row" id="hcta">
+      <button class="btn-prim" onclick="document.getElementById('WM').classList.add('show')">Reserve Now — $299</button>
+      <button class="btn-sec" onclick="scrollTo({top:window.innerHeight*2,behavior:'smooth'})">Explore Technology</button>
+    </div>
+  </div>
+  <div class="scroll-hint" id="sh">
+    <div class="sh-line"></div>
+    <div class="sh-txt">SCROLL TO EXPLORE</div>
+  </div>
+</section>
+
+<div style="height:100vh"></div>
+
+<!-- DESIGN -->
+<section class="sec" id="s1">
+  <div class="s1-content">
+    <div class="sec-badge rev"><i></i>Design Philosophy</div>
+    <h2 class="sec-h rev">PRECISION<br>CRAFTED.</h2>
+    <p class="sec-p rev">Every curve refined over 3,000 prototyping hours. Aerospace-grade aluminium shell meets medical silicone in an ergonomic form that disappears into your ear canal.</p>
+    <div class="specs-grid rev">
+      <div class="spec-box"><div class="spec-v">11<sub>mm</sub></div><div class="spec-l">Graphene Driver</div></div>
+      <div class="spec-box"><div class="spec-v">5.3</div><div class="spec-l">Bluetooth</div></div>
+      <div class="spec-box"><div class="spec-v">6<sub>×</sub></div><div class="spec-l">Mic ANC Array</div></div>
+      <div class="spec-box"><div class="spec-v">4<sub>g</sub></div><div class="spec-l">Per Earbud</div></div>
+      <div class="spec-box"><div class="spec-v">IPX5</div><div class="spec-l">Water Resistant</div></div>
+      <div class="spec-box"><div class="spec-v">40<sub>ms</sub></div><div class="spec-l">Ultra-Low Latency</div></div>
+    </div>
+  </div>
+</section>
+
+<div style="height:80vh"></div>
+
+<!-- EXPLODED -->
+<section class="sec" id="s2" style="flex-direction:column">
+  <div class="s2-top rev" style="text-align:center">
+    <div class="sec-badge rev" style="justify-content:center"><i></i>Internal Architecture<i></i></div>
+    <h2 class="sec-h rev">ENGINEERED<br>FROM WITHIN.</h2>
+    <p class="sec-p rev" style="margin:0 auto;text-align:center">Six precision components. Each selected for acoustic supremacy.</p>
+  </div>
+  <div class="parts-ring rev" style="margin:0 auto">
+    <div class="part-card"><div class="part-num">01 / 06</div><div class="part-icon">🔊</div><div class="part-name">Acoustic Grille</div><div class="part-desc">Titanium-coated mesh with 0.3mm micro-perforations. Tuned for crystalline treble without resonance.</div><div class="part-stat">— IPX5 RATED</div></div>
+    <div class="part-card"><div class="part-num">02 / 06</div><div class="part-icon">🛡️</div><div class="part-name">Metal Casing</div><div class="part-desc">CNC-machined aerospace aluminium. Anodised finish. Zero plastic structural components.</div><div class="part-stat">— 0.6MM WALL THICKNESS</div></div>
+    <div class="part-card"><div class="part-num">03 / 06</div><div class="part-icon">⚡</div><div class="part-name">Speaker Driver</div><div class="part-desc">Custom 11mm graphene composite diaphragm. Deep sub-bass to crystalline highs, no crossover needed.</div><div class="part-stat">— 5Hz–40kHz RANGE</div></div>
+    <div class="part-card"><div class="part-num">04 / 06</div><div class="part-icon">🧠</div><div class="part-name">Main PCB</div><div class="part-desc">Qualcomm QCC5181 processor. aptX Lossless. Low Energy Bluetooth 5.3. Ultra-low 40ms game mode.</div><div class="part-stat">— 1.1GHz DSP</div></div>
+    <div class="part-card"><div class="part-num">05 / 06</div><div class="part-icon">🔋</div><div class="part-name">Battery</div><div class="part-desc">105mAh lithium polymer cell. Graphene-enhanced charging. 10 minutes → 2 hours playback.</div><div class="part-stat">— 8HR CONTINUOUS</div></div>
+    <div class="part-card"><div class="part-num">06 / 06</div><div class="part-icon">💎</div><div class="part-name">Ear Tip</div><div class="part-desc">Dual-layer medical-grade silicone + memory foam hybrid. 3 sizes included. Perfect passive seal.</div><div class="part-stat">— ANATOMIC FIT</div></div>
+  </div>
+</section>
+
+<div style="height:60vh"></div>
+
+<!-- FEATURES -->
+<section class="sec" id="s3" style="justify-content:flex-end;padding-right:max(60px,8vw)">
+  <div class="feats">
+    <div class="sec-badge rev"><i></i>Capabilities</div>
+    <h2 class="sec-h rev">HEAR<br>EVERYTHING.</h2>
+    <div class="feat-row rev">
+      <div class="feat-icon-box">🎧</div>
+      <div><div class="feat-t">Active Noise Cancel</div><div class="feat-d">6-mic hybrid feedforward/feedback ANC eliminates up to -42dB of ambient noise in real-time.</div><div class="feat-chip">-42dB REDUCTION</div></div>
+    </div>
+    <div class="feat-row rev">
+      <div class="feat-icon-box">🌊</div>
+      <div><div class="feat-t">Spatial Audio</div><div class="feat-d">Head-tracked 360° immersive audio. Dolby Atmos + DTS:X support. Real-time HRTF processing.</div><div class="feat-chip">DOLBY ATMOS · DTS:X</div></div>
+    </div>
+    <div class="feat-row rev">
+      <div class="feat-icon-box">👁️</div>
+      <div><div class="feat-t">Transparency Mode</div><div class="feat-d">Hear your environment naturally while your music plays. Adaptive blending in 3ms response time.</div><div class="feat-chip">3MS RESPONSE</div></div>
+    </div>
+    <div class="feat-row rev">
+      <div class="feat-icon-box">👆</div>
+      <div><div class="feat-t">Haptic Touch</div><div class="feat-d">Capacitive touch pad with vibration feedback. 15 programmable gesture zones. No accidental triggers.</div><div class="feat-chip">15 GESTURES</div></div>
+    </div>
+  </div>
+</section>
+
+<div style="height:60vh"></div>
+
+<!-- ANC VISUALIZER -->
+<section class="sec" id="s4" style="flex-direction:column;text-align:center">
+  <div class="sec-badge rev" style="justify-content:center"><i></i>Noise Cancellation<i></i></div>
+  <h2 class="sec-h rev">SILENCE<br>THE WORLD.</h2>
+  <div class="anc-vis rev" style="margin:32px auto">
+    <div class="anc-ring"></div><div class="anc-ring"></div>
+    <div class="anc-ring"></div><div class="anc-ring"></div>
+    <div class="anc-center">
+      <div>
+        <div class="anc-db">-42</div>
+        <div class="anc-label">dB REDUCTION</div>
+      </div>
+    </div>
+    <div class="anc-waves" id="ancWaves"></div>
+  </div>
+  <div class="anc-stats rev">
+    <div class="as-item"><div class="as-val">6<span>mic</span></div><div class="as-lbl">Microphone Array</div></div>
+    <div class="as-item"><div class="as-val">3<span>ms</span></div><div class="as-lbl">Response Time</div></div>
+    <div class="as-item"><div class="as-val">42<span>dB</span></div><div class="as-lbl">Noise Reduction</div></div>
+  </div>
+</section>
+
+<div style="height:60vh"></div>
+
+<!-- COLOR SYSTEM -->
+<section class="sec" id="s5" style="flex-direction:column;text-align:center">
+  <div class="sec-badge rev" style="justify-content:center"><i></i>Color Universe<i></i></div>
+  <h2 class="sec-h rev">YOUR COLOUR.<br>YOUR IDENTITY.</h2>
+  <div id="wvf" class="rev"></div>
+  <div class="color-swatches rev">
+    <div class="csw sel" data-n="Midnight Black" data-accent="#00e5ff" data-bg="#03050f" data-shell="0x0d1525" data-ring="0x00e5ff" style="background:radial-gradient(#1a2545,#050810)" onclick="pickColor(this)"></div>
+    <div class="csw" data-n="Arctic Silver" data-accent="#a8c8ff" data-bg="#0a0e14" data-shell="0xb8bec8" data-ring="0xa8c8ff" style="background:radial-gradient(#c8d4e8,#6878a0)" onclick="pickColor(this)"></div>
+    <div class="csw" data-n="Ocean Blue" data-accent="#0099ff" data-bg="#020810" data-shell="0x0d2848" data-ring="0x0099ff" style="background:radial-gradient(#1050c0,#020814)" onclick="pickColor(this)"></div>
+    <div class="csw" data-n="Sunset Orange" data-accent="#ff6b35" data-bg="#0e0504" data-shell="0x240a02" data-ring="0xff6b35" style="background:radial-gradient(#d04810,#0a0402)" onclick="pickColor(this)"></div>
+    <div class="csw" data-n="Pearl White" data-accent="#e8d8c0" data-bg="#080808" data-shell="0xece8e0" data-ring="0xe8d8c0" style="background:radial-gradient(#faf8f4,#c0bcb4)" onclick="pickColor(this)"></div>
+  </div>
+  <div class="color-name-big rev" id="colorNm" style="color:var(--c1)">MIDNIGHT BLACK</div>
+  <div class="color-detail rev" id="colorDt">MATTE FINISH · ELECTROPLATED RING · MIST-GREY MESH</div>
+</section>
+
+<div style="height:60vh"></div>
+
+<!-- CHARGING CASE -->
+<section class="sec" id="s6" style="justify-content:flex-start;padding-left:max(60px,8vw)">
+  <div class="case-right">
+    <div class="sec-badge rev"><i></i>Charging Case</div>
+    <h2 class="sec-h rev">POCKET-SIZED<br>POWERHOUSE.</h2>
+    <p class="sec-p rev">The aerospace-grade case delivers 3 full recharges wirelessly. Drop it on any Qi pad. Fall asleep. Wake up fully charged.</p>
+    <div class="bat-row rev">
+      <div class="bat-unit"><div class="bat-v">8<span>hr</span></div><div class="bat-l">Earbud Battery</div></div>
+      <div class="bat-unit"><div class="bat-v">32<span>hr</span></div><div class="bat-l">With Case</div></div>
+      <div class="bat-unit"><div class="bat-v">10<span>min</span></div><div class="bat-l">Quick Charge</div></div>
+    </div>
+    <div class="charge-bar-wrap rev">
+      <div class="charge-label"><span>Earbud Charge</span><span>87%</span></div>
+      <div class="charge-bar"><div class="charge-fill" style="--w:87%"></div></div>
+      <div class="charge-label"><span>Case Charge</span><span>100%</span></div>
+      <div class="charge-bar"><div class="charge-fill" style="--w:100%"></div></div>
+      <div class="charge-label"><span>Estimated Remaining</span><span>14hr 22min</span></div>
+      <div class="charge-bar"><div class="charge-fill" style="--w:62%"></div></div>
+    </div>
+  </div>
+</section>
+
+<div style="height:60vh"></div>
+
+<!-- BUY -->
+<section class="sec" id="s7" style="flex-direction:column;text-align:center">
+  <div class="sec-badge rev" style="justify-content:center"><i></i>Available Now<i></i></div>
+  <h2 class="sec-h rev">NOVA X1<br>WIRELESS.</h2>
+  <div class="price-display rev"><span class="sym">$</span>299</div>
+  <div class="price-perks rev">
+    <div class="perk"><div class="perk-icon">🚀</div><div class="perk-t">Free Shipping</div><div class="perk-d">Express worldwide</div></div>
+    <div class="perk"><div class="perk-icon">🔄</div><div class="perk-t">30-Day Returns</div><div class="perk-d">No questions asked</div></div>
+    <div class="perk"><div class="perk-icon">🛡️</div><div class="perk-t">2-Year Warranty</div><div class="perk-d">Full coverage</div></div>
+    <div class="perk"><div class="perk-icon">🎁</div><div class="perk-t">Gift Ready</div><div class="perk-d">Premium packaging</div></div>
+  </div>
+  <div class="buy-actions rev">
+    <button class="btn-prim" onclick="document.getElementById('WM').classList.add('show')">Order Now — $299</button>
+    <button class="wishlist-btn" onclick="document.getElementById('WM').classList.add('show')">Add to Wishlist</button>
+  </div>
+</section>
+
+</div><!-- end SC -->
+
+<footer>
+  <div class="fl-logo">NOV<em>A</em> X1</div>
+  <ul class="fl-links">
+    <li><a href="#">Support</a></li>
+    <li><a href="#">Privacy</a></li>
+    <li><a href="#">Careers</a></li>
+    <li><a href="#">Press</a></li>
+  </ul>
+  <div class="fl-copy">© 2026 NOVA TECHNOLOGIES INC. ALL RIGHTS RESERVED.</div>
+</footer>
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+// ══════════════════════════════════════════
+// CURSOR
+// ══════════════════════════════════════════
+const CD=document.getElementById('CD'),CR=document.getElementById('CR');
+let mx=window.innerWidth/2,my=window.innerHeight/2,rx=mx,ry=my;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+document.querySelectorAll('button,a,.csw,.part-card,.spec-box,.feat-row').forEach(el=>{
+  el.addEventListener('mouseenter',()=>CR.classList.add('big'));
+  el.addEventListener('mouseleave',()=>CR.classList.remove('big'));
+});
+(function animC(){
+  rx+=(mx-rx)*.1;ry+=(my-ry)*.1;
+  CD.style.left=mx+'px';CD.style.top=my+'px';
+  CR.style.left=rx+'px';CR.style.top=ry+'px';
+  requestAnimationFrame(animC);
+})();
+
+// ══════════════════════════════════════════
+// BUILD WAVEFORM
+// ══════════════════════════════════════════
+const wvf=document.getElementById('wvf');
+[12,20,32,18,28,40,24,36,14,30,44,22,38,16,34,26,42,18,32,20,14,36].forEach((h,i)=>{
+  const b=document.createElement('div');b.className='wvb';
+  b.style.cssText=`--h:${h}px;--d:${.4+i*.05}s;animation-delay:${i*.06}s`;
+  wvf.appendChild(b);
+});
+
+// ══════════════════════════════════════════
+// ANC WAVE BARS
+// ══════════════════════════════════════════
+const aw=document.getElementById('ancWaves');
+for(let i=0;i<32;i++){
+  const b=document.createElement('div');b.className='wave-bar';
+  const h=Math.random()*40+10;
+  b.style.cssText=`--h:${h}px;--d:${.3+Math.random()*.8}s;animation-delay:${i*.04}s`;
+  aw.appendChild(b);
+}
+
+// ══════════════════════════════════════════
+// THREE.JS — FULL SCENE
+// ══════════════════════════════════════════
+const CVS=document.getElementById('CVS');
+const renderer=new THREE.WebGLRenderer({canvas:CVS,antialias:true,alpha:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.physicallyCorrectLights=true;
+
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(42,window.innerWidth/window.innerHeight,0.01,200);
+cam.position.set(0,.1,7.5);
+
+window.addEventListener('resize',()=>{
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  cam.aspect=window.innerWidth/window.innerHeight;
+  cam.updateProjectionMatrix();
+});
+
+// ─── LIGHTS ───
+const amb=new THREE.AmbientLight(0x08152e,3.5); scene.add(amb);
+const key=new THREE.DirectionalLight(0x00e5ff,5); key.position.set(4,5,4); key.castShadow=true; scene.add(key);
+const fill=new THREE.DirectionalLight(0x7c3aed,2.5); fill.position.set(-5,-2,2); scene.add(fill);
+const rim=new THREE.PointLight(0x00e5ff,3,18); rim.position.set(0,-4,-3); scene.add(rim);
+const top=new THREE.SpotLight(0xffffff,4,25,Math.PI/5,.4); top.position.set(0,8,2); top.castShadow=true; scene.add(top);
+const bloom=new THREE.PointLight(0x00e5ff,2,8); bloom.position.set(0,0,2); scene.add(bloom);
+
+// ─── MATERIALS ───
+const shellM=new THREE.MeshStandardMaterial({color:0x0d1525,metalness:.94,roughness:.1});
+const grillM=new THREE.MeshStandardMaterial({color:0x252c3a,metalness:.75,roughness:.35});
+const ringM=new THREE.MeshStandardMaterial({color:0x00e5ff,metalness:.6,roughness:.08,emissive:0x00e5ff,emissiveIntensity:.35});
+const tipM=new THREE.MeshStandardMaterial({color:0x08080e,metalness:0,roughness:.92});
+const driverM=new THREE.MeshStandardMaterial({color:0x1a1a30,metalness:.9,roughness:.06});
+const pcbM=new THREE.MeshStandardMaterial({color:0x0f3d1a,metalness:.25,roughness:.65,emissive:0x00ff44,emissiveIntensity:.06});
+const battM=new THREE.MeshStandardMaterial({color:0x1a3268,metalness:.5,roughness:.4,emissive:0x2244ff,emissiveIntensity:.06});
+const caseM=new THREE.MeshStandardMaterial({color:0x0a0e1c,metalness:.88,roughness:.14});
+const ledM=new THREE.MeshStandardMaterial({color:0x00ff44,emissive:0x00ff44,emissiveIntensity:1.5});
+const contactM=new THREE.MeshStandardMaterial({color:0xd4a020,metalness:.96,roughness:.08});
+
+// ─── EARBUD BUILDER ───
+function makeEarbud(side){
+  const g=new THREE.Group();
+
+  // Main shell body
+  const bodyG=new THREE.SphereGeometry(.52,36,36);
+  const body=new THREE.Mesh(bodyG,shellM); body.scale.set(1,1.22,.88); body.castShadow=true;
+  g.add(body);
+
+  // Stem
+  const stmG=new THREE.CylinderGeometry(.11,.16,.6,20);
+  const stm=new THREE.Mesh(stmG,shellM);
+  stm.position.set(0,-.62,.05); stm.rotation.z=side==='L'?.22:-.22; g.add(stm);
+
+  // Tip bulb
+  const tbG=new THREE.SphereGeometry(.19,16,16);
+  const tb=new THREE.Mesh(tbG,tipM); tb.scale.set(1,1.35,1);
+  tb.position.set(side==='L'?.03:-.03,-.92,.08); g.add(tb);
+
+  // Grille face
+  const faceG=new THREE.CircleGeometry(.38,40);
+  const face=new THREE.Mesh(faceG,grillM);
+  face.position.set(0,.06,.5); face.rotation.x=-.18; g.add(face);
+
+  // Inner ring tight
+  const ir=new THREE.TorusGeometry(.39,.025,12,64);
+  const irm=new THREE.Mesh(ir,ringM);
+  irm.position.set(0,.06,.48); irm.rotation.x=-.18; g.add(irm);
+
+  // Outer glow ring
+  const or=new THREE.TorusGeometry(.46,.012,10,64);
+  const orm=new THREE.Mesh(or,new THREE.MeshStandardMaterial({color:0x00e5ff,emissive:0x00e5ff,emissiveIntensity:.55,transparent:true,opacity:.65}));
+  orm.position.copy(irm.position); orm.rotation.copy(irm.rotation); g.add(orm);
+
+  // Sensor dot
+  const sd=new THREE.Mesh(new THREE.SphereGeometry(.028,8,8),new THREE.MeshStandardMaterial({color:0x00e5ff,emissive:0x00e5ff,emissiveIntensity:1}));
+  sd.position.set(side==='L'?.38:-.38,-.22,.34); g.add(sd);
+
+  // Branding indent
+  const bi=new THREE.Mesh(new THREE.BoxGeometry(.1,.012,.005),new THREE.MeshStandardMaterial({color:0x7090a0,metalness:.7}));
+  bi.position.set(0,-.28,.51); g.add(bi);
+
+  // Ventilation slots
+  for(let i=0;i<3;i++){
+    const vs=new THREE.Mesh(new THREE.BoxGeometry(.08,.004,.005),new THREE.MeshStandardMaterial({color:0x101828}));
+    vs.position.set(0,-.08-i*.05,.5); g.add(vs);
+  }
+
+  return g;
+}
+
+// ─── CHARGING CASE ───
+function makeCase(){
+  const cg=new THREE.Group();
+
+  // Base
+  const baseG=new THREE.BoxGeometry(1.7,.62,1.0);
+  const base=new THREE.Mesh(baseG,caseM); base.castShadow=true; cg.add(base);
+
+  // Lid
+  const lidG=new THREE.BoxGeometry(1.7,.58,1.0);
+  const lid=new THREE.Mesh(lidG,new THREE.MeshStandardMaterial({color:0x0d1228,metalness:.88,roughness:.12}));
+  lid.position.set(0,.62,0); lid.rotation.x=-.65; cg.add(lid);
+
+  // LED
+  const led=new THREE.Mesh(new THREE.SphereGeometry(.045,10,10),ledM);
+  led.position.set(0,-.28,.52); cg.add(led);
+
+  // Charging contacts
+  [-0.38,0.38].forEach(x=>{
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.03,14),contactM);
+    c.position.set(x,.33,0); cg.add(c);
+  });
+
+  // Case edge glow strip
+  const edgeG=new THREE.TorusGeometry(1.0,.012,8,100);
+  const edgeMesh=new THREE.Mesh(edgeG,new THREE.MeshStandardMaterial({color:0x00e5ff,emissive:0x00e5ff,emissiveIntensity:.2}));
+  edgeMesh.rotation.y=Math.PI/2; edgeMesh.scale.set(1,.31,.58); cg.add(edgeMesh);
+
+  // USB-C
+  const usb=new THREE.Mesh(new THREE.BoxGeometry(.2,.065,.015),new THREE.MeshStandardMaterial({color:0x1a1a28}));
+  usb.position.set(0,-.3,-.52); cg.add(usb);
+
+  return cg;
+}
+
+// ─── EXPLODE PARTS ───
+const PARTS=[
+  {geo:new THREE.CylinderGeometry(.38,.38,.09,36),mat:grillM,offset:new THREE.Vector3(0,1.95,0),label:'Acoustic Grille'},
+  {geo:new THREE.CylinderGeometry(.42,.44,.2,36),mat:shellM,offset:new THREE.Vector3(0,1.28,0),label:'Metal Casing Front'},
+  {geo:new THREE.SphereGeometry(.34,28,28,0,Math.PI*2,0,Math.PI/2),mat:driverM,offset:new THREE.Vector3(0,.6,0),label:'Speaker Driver'},
+  {geo:new THREE.BoxGeometry(.64,.065,.48),mat:pcbM,offset:new THREE.Vector3(0,-.04,0),label:'Main PCB'},
+  {geo:new THREE.BoxGeometry(.52,.11,.32),mat:battM,offset:new THREE.Vector3(0,-.64,0),label:'Battery'},
+  {geo:new THREE.SphereGeometry(.42,28,28,0,Math.PI*2,Math.PI/2,Math.PI/2),mat:shellM,offset:new THREE.Vector3(0,-1.22,0),label:'Metal Casing Rear'},
+];
+const explodeGroup=new THREE.Group();
+const partMeshes=PARTS.map(p=>{const m=new THREE.Mesh(p.geo,p.mat);explodeGroup.add(m);return m;});
+explodeGroup.position.set(-1.5,0,0);
+explodeGroup.visible=false;
+scene.add(explodeGroup);
+
+// ─── ASSEMBLE ───
+const leftEar=makeEarbud('L');
+const rightEar=makeEarbud('R');
+leftEar.position.set(-.95,.1,0);
+rightEar.position.set(.95,.1,0);
+const earPair=new THREE.Group();
+earPair.add(leftEar);earPair.add(rightEar);
+scene.add(earPair);
+
+const caseModel=makeCase();
+caseModel.scale.setScalar(.72);
+caseModel.position.set(.5,-1.4,-.4);
+caseModel.visible=false;
+scene.add(caseModel);
+
+// ─── PARTICLES ───
+const ptGeo=new THREE.BufferGeometry();
+const ptCount=700;
+const ptPos=new Float32Array(ptCount*3);
+for(let i=0;i<ptCount;i++){ptPos[i*3]=(Math.random()-.5)*22;ptPos[i*3+1]=(Math.random()-.5)*22;ptPos[i*3+2]=(Math.random()-.5)*18;}
+ptGeo.setAttribute('position',new THREE.BufferAttribute(ptPos,3));
+const pts=new THREE.Points(ptGeo,new THREE.PointsMaterial({color:0x4466aa,size:.022,transparent:true,opacity:.5}));
+scene.add(pts);
+
+// ─── FLOOR GRID (subtle) ───
+const gridH=new THREE.GridHelper(20,40,0x001122,0x001122);
+gridH.position.y=-2.5;gridH.material.opacity=.3;gridH.material.transparent=true;
+scene.add(gridH);
+
+// ══════════════════════════════════════════
+// SCROLL STATE
+// ══════════════════════════════════════════
+let tCamX=0,tCamY=0,tCamZ=7.5,tCamRX=0,tCamRY=0;
+let earRotY=0;
+let explodeT=0,tExplodeT=0;
+let mxOff=0,myOff=0;
+let labelsOn=false;
+let clk=0;
+let caseSec=false;
+
+const SECTS=['s0','s1','s2','s3','s4','s5','s6','s7'];
+const DOTS=document.querySelectorAll('.dot-ind');
+
+function setDot(n){DOTS.forEach((d,i)=>d.classList.toggle('on',i===n));}
+
+function onScroll(){
+  const sy=window.scrollY,vh=window.innerHeight;
+  const max=document.body.scrollHeight-vh;
+  document.getElementById('PROG').style.width=(sy/max*100)+'%';
+
+  // Update section indicators
+  SECTS.forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const r=el.getBoundingClientRect();
+    if(r.top<=vh*.5&&r.bottom>=vh*.5)setDot(i);
+  });
+
+  // Progress bar on charge bars
+  document.querySelectorAll('.charge-fill').forEach(f=>{
+    const r=f.closest('.charge-bar-wrap');
+    if(!r)return;
+    const rb=r.getBoundingClientRect();
+    if(rb.top<vh*.9)f.classList.add('go');
+  });
+
+  // HERO (0 – 1vh)
+  if(sy<vh){
+    const t=sy/vh;
+    tCamZ=7.5-t;tCamX=t*.3;tCamY=t*.1;
+    earPair.visible=true;explodeGroup.visible=false;caseModel.visible=false;
+    hideLabels();tExplodeT=0;
+    earPair.position.set(0,Math.sin(clk*.8)*.04,0);
+    leftEar.position.x=-.95;rightEar.position.x=.95;
+  }
+  // DESIGN (1vh – 2.5vh)
+  else if(sy<vh*2.5){
+    const t=(sy-vh)/(vh*1.5);
+    tCamZ=6.5-t*.8;tCamX=1.0*t;tCamY=-.1*t;
+    earPair.visible=true;explodeGroup.visible=false;caseModel.visible=false;
+    hideLabels();tExplodeT=0;
+  }
+  // EXPLODE (2.5vh – 4vh)
+  else if(sy<vh*4){
+    const t=Math.min(1,(sy-vh*2.5)/(vh*1.5));
+    tExplodeT=t;
+    tCamZ=5.8;tCamX=-1.2*t-.2;tCamY=0;
+    earPair.visible=false;caseModel.visible=false;
+    explodeGroup.visible=true;
+    if(t>.45)showLabels(); else hideLabels();
+  }
+  // FEATURES (4vh – 5.5vh)
+  else if(sy<vh*5.5){
+    const t=(sy-vh*4)/(vh*1.5);
+    tExplodeT=Math.max(0,1-t*2.5);
+    tCamZ=5.8+t*1.2;tCamX=-1.2+t*2.6;tCamY=0;
+    if(tExplodeT<.05){explodeGroup.visible=false;earPair.visible=true;}
+    caseModel.visible=false;hideLabels();
+  }
+  // ANC (5.5vh – 7vh)
+  else if(sy<vh*7){
+    const t=(sy-vh*5.5)/(vh*1.5);
+    tCamZ=7;tCamX=t*.3;tCamY=t*.2;
+    earPair.visible=true;explodeGroup.visible=false;caseModel.visible=false;
+    hideLabels();
+  }
+  // COLOR (7vh – 8.5vh)
+  else if(sy<vh*8.5){
+    tCamZ=7.2;tCamX=0;tCamY=.1;
+    earPair.visible=true;explodeGroup.visible=false;caseModel.visible=false;
+    hideLabels();
+    leftEar.position.x=-.95+Math.sin(clk*.3)*.04;
+    rightEar.position.x=.95-Math.sin(clk*.3)*.04;
+  }
+  // CASE (8.5vh – 10vh)
+  else if(sy<vh*10){
+    const t=(sy-vh*8.5)/(vh*1.5);
+    tCamZ=6.5;tCamX=-1.2+t*.6;tCamY=-.2;
+    caseModel.visible=true;
+    earPair.visible=true;explodeGroup.visible=false;hideLabels();
+    earPair.position.set(-.5,0,0);
+    leftEar.position.x=-.85;rightEar.position.x=.85;
+  }
+  // BUY
+  else {
+    tCamZ=7;tCamX=0;tCamY=0;
+    caseModel.visible=true;earPair.visible=true;explodeGroup.visible=false;
+    hideLabels();
+  }
+}
+
+window.addEventListener('scroll',onScroll,{passive:true});
+window.addEventListener('mousemove',e=>{mxOff=(e.clientX/window.innerWidth-.5)*.5;myOff=(e.clientY/window.innerHeight-.5)*.35;});
+
+function showLabels(){
+  if(labelsOn)return;labelsOn=true;
+  document.querySelectorAll('.fl').forEach((l,i)=>setTimeout(()=>l.classList.add('show'),i*110));
+}
+function hideLabels(){
+  if(!labelsOn)return;labelsOn=false;
+  document.querySelectorAll('.fl').forEach(l=>l.classList.remove('show'));
+}
+
+// ══════════════════════════════════════════
+// RENDER LOOP
+// ══════════════════════════════════════════
+function render(){
+  requestAnimationFrame(render);
+  clk+=.012;
+
+  // Smooth camera
+  cam.position.x+=(tCamX+mxOff-cam.position.x)*.055;
+  cam.position.y+=(tCamY-myOff*.4-cam.position.y)*.055;
+  cam.position.z+=(tCamZ-cam.position.z)*.055;
+  cam.lookAt(0,0,0);
+
+  // Explode animation
+  explodeT+=(tExplodeT-explodeT)*.08;
+  partMeshes.forEach((m,i)=>{
+    const off=PARTS[i].offset;
+    m.position.y+=( off.y*explodeT - m.position.y)*.1;
+    m.rotation.y+=.007;
+    if(PARTS[i].mat===pcbM)PARTS[i].mat.emissiveIntensity=.06+Math.sin(clk*2+i)*.04;
+    if(PARTS[i].mat===battM)PARTS[i].mat.emissiveIntensity=.06+Math.sin(clk*1.5+i*.5)*.03;
+  });
+
+  // Ear auto-rotation
+  earRotY+=.0045;
+  earPair.rotation.y=earRotY+mxOff*.3;
+  earPair.rotation.x=myOff*.2;
+
+  // Float
+  earPair.position.y+=(Math.sin(clk*.7)*.055-earPair.position.y)*.04;
+
+  // Ring glow pulse
+  ringM.emissiveIntensity=.3+Math.sin(clk*1.4)*.15;
+  bloom.intensity=1.8+Math.sin(clk*1.2)*.5;
+
+  // Key light gentle sweep
+  key.position.x=3.5+Math.sin(clk*.35)*1.5;
+  key.intensity=4.5+Math.sin(clk*.6)*.8;
+
+  // Case rotation
+  if(caseModel.visible)caseModel.rotation.y+=.004;
+
+  // Particles
+  pts.rotation.y+=.0006;pts.rotation.x+=.0002;
+
+  // Grid subtle bob
+  gridH.position.y=-2.5+Math.sin(clk*.4)*.03;
+
+  renderer.render(scene,cam);
+}
+render();
+
+// ══════════════════════════════════════════
+// GSAP — HERO ENTRANCE
+// ══════════════════════════════════════════
+const htl=gsap.timeline({delay:.6});
+htl
+  .to('#hp',{opacity:1,y:0,duration:.9,ease:'power3.out'})
+  .to('#h1a',{y:'0%',opacity:1,duration:1,ease:'power4.out'},'-=.4')
+  .to('#h1b',{y:'0%',opacity:1,duration:1,ease:'power4.out'},'-=.6')
+  .to('#h1c',{y:'0%',opacity:1,duration:1,ease:'power4.out'},'-=.6')
+  .to('#hsub',{opacity:1,duration:.8,ease:'power3.out'},'-=.4')
+  .to('#hcta',{opacity:1,duration:.7,ease:'power3.out'},'-=.3')
+  .to('#sh',{opacity:1,duration:.6},'-=.2');
+
+// ══════════════════════════════════════════
+// SCROLL REVEALS
+// ══════════════════════════════════════════
+document.querySelectorAll('.rev').forEach(el=>{
+  gsap.fromTo(el,{opacity:0,y:40},{
+    opacity:1,y:0,duration:.95,ease:'power3.out',
+    scrollTrigger:{trigger:el,start:'top 88%',once:true}
+  });
+});
+
+// NAV solid on scroll
+window.addEventListener('scroll',()=>{
+  document.getElementById('NAV').classList.toggle('solid',window.scrollY>60);
+},{ passive:true });
+
+// ══════════════════════════════════════════
+// COLOR SYSTEM
+// ══════════════════════════════════════════
+const colorConfig={
+  'Midnight Black':   {shell:0x0d1525,ring:0x00e5ff,ringE:0x00e5ff,accent:'#00e5ff',bg:'#03050f',detail:'MATTE FINISH · ELECTROPLATED RING · MIST-GREY MESH',tip:0x080810,keyC:0x00e5ff,ambC:0x08152e},
+  'Arctic Silver':    {shell:0xb0b8c8,ring:0xa8c8ff,ringE:0xa8c8ff,accent:'#a8c8ff',bg:'#070a0f',detail:'BRUSHED FINISH · CHROME RING · PLATINUM MESH',tip:0x101418,keyC:0xa8c8ff,ambC:0x101828},
+  'Ocean Blue':       {shell:0x0c2448,ring:0x0099ff,ringE:0x0099ff,accent:'#0099ff',bg:'#02060e',detail:'DEEP SEA ANODISED · COBALT RING · NAVY MESH',tip:0x04080e,keyC:0x0088ff,ambC:0x051022},
+  'Sunset Orange':    {shell:0x220a02,ring:0xff6b35,ringE:0xff6b35,accent:'#ff6b35',bg:'#0e0402',detail:'VOLCANIC FINISH · FLAME RING · EMBER MESH',tip:0x0a0502,keyC:0xff6b35,ambC:0x180804},
+  'Pearl White':      {shell:0xe8e4dc,ring:0xe8d8c0,ringE:0xe8d8c0,accent:'#d4c8b0',bg:'#07080a',detail:'LUMINOUS FINISH · GOLD RING · IVORY MESH',tip:0x181818,keyC:0xffeecc,ambC:0x181412},
+};
+
+function pickColor(el){
+  document.querySelectorAll('.csw').forEach(s=>s.classList.remove('sel'));
+  el.classList.add('sel');
+  const name=el.dataset.n;
+  const cfg=colorConfig[name];
+  if(!cfg)return;
+
+  shellM.color.setHex(cfg.shell);
+  ringM.color.setHex(cfg.ring);
+  ringM.emissive.setHex(cfg.ringE);
+  caseM.color.setHex(cfg.shell);
+  key.color.setHex(cfg.keyC);
+  amb.color.setHex(cfg.ambC);
+  tipM.color.setHex(cfg.tip);
+
+  document.documentElement.style.setProperty('--c1',cfg.accent);
+  document.getElementById('colorNm').textContent=name.toUpperCase();
+  document.getElementById('colorNm').style.color=cfg.accent;
+  document.getElementById('colorDt').textContent=cfg.detail;
+
+  document.querySelectorAll('.wvb').forEach(b=>b.style.background=`linear-gradient(${cfg.accent},#7c3aed)`);
+
+  notify(`Color changed to ${name} ✦`,'success');
+}
+
+// ══════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════
+function notify(msg,type='success'){
+  const c=document.getElementById('NOTIFS');
+  const n=document.createElement('div');n.className='notif';n.textContent=msg;
+  c.appendChild(n);
+  requestAnimationFrame(()=>n.classList.add('in'));
+  setTimeout(()=>{n.classList.remove('in');setTimeout(()=>n.remove(),500);},3500);
+}
+
+// ══════════════════════════════════════════
+// WISHLIST
+// ══════════════════════════════════════════
+function submitWishlist(){
+  const name=document.getElementById('wl-name').value;
+  const email=document.getElementById('wl-email').value;
+  const color=document.getElementById('wl-color').value;
+  if(!name||!email){notify('Please fill all fields','error');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){notify('Invalid email address','error');return;}
+
+  // Save to localStorage (demo) — real backend would POST to /api/wishlist
+  const wl=JSON.parse(localStorage.getItem('nova_wishlist')||'[]');
+  wl.push({name,email,color,ts:Date.now()});
+  localStorage.setItem('nova_wishlist',JSON.stringify(wl));
+
+  document.getElementById('WM').classList.remove('show');
+  notify(`🎉 ${name}, you're on the list for ${color}!`,'success');
+  setTimeout(()=>notify('We\'ll email you on launch day 🚀'),1600);
+}
+
+// Close modal on backdrop click
+document.getElementById('WM').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
+
+// Initial scroll state
+onScroll();
+
+// ══════════════════════════════════════════
+// BACKEND API (connects when server running)
+// ══════════════════════════════════════════
+async function apiPost(path,body){
+  try{
+    const r=await fetch('/api'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    return await r.json();
+  }catch{return null;}
+}
+// Analytics ping on section view
+const io=new IntersectionObserver(entries=>entries.forEach(e=>{
+  if(e.isIntersecting)apiPost('/analytics',{event:'section_view',section:e.target.id,ts:Date.now()});
+}),{threshold:.5});
+document.querySelectorAll('.sec').forEach(s=>io.observe(s));
+</script>
+</body>
+</html>
